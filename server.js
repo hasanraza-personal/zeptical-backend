@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 const mongoose = require('mongoose');
 const cors = require('cors');
-const TrackUser = require('./middleware/TrackUser');
+// const TrackUser = require('./middleware/TrackUser');
 
 const PORT = process.env.PORT || 5000;
 
@@ -37,7 +37,7 @@ mongoose.connect(mongoURI);
 app.use(express.json());
 app.use(express.static(__dirname + '/public'));
 
-app.use(TrackUser);
+// app.use(TrackUser);
 
 app.get("/name", function (req, res) {
     res.end("Some data will get displayed");
