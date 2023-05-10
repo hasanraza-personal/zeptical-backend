@@ -20,3 +20,4 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
     - run: npm install
+    - run: pm2 restart zeptical-backend
