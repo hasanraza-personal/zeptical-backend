@@ -40,7 +40,7 @@ app.use(express.static(__dirname + '/public'));
 // app.use(TrackUser);
 
 app.get("/name", function (req, res) {
-    res.end("Some data will get displayed");
+    res.send("I think it's working!");
 });
 
 // Available routes
