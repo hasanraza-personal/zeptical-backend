@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const userModel = require('../../models/user/User');
+const userProfileModel = require('../../models/user/UserProfile');
 const otpModel = require('../../models/user/userOTPVerification');
 const { MailtrapClient } = require("mailtrap");
 const path = require('path');
@@ -239,6 +240,15 @@ router.post('/verifyemail', Authenticate, [
         return res.status(400).json({ success, msg: 'Something went wrong. Please try again', err: error.message });
     }
 
+    // Create user profile
+    try {
+        await userProfileModel.create({
+            userId: req.user,
+        });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong while createing user profile. Please try again', err: error.message });
+    }
+
     // Save jsonwebtoken
     let data = {
         id: req.user
@@ -327,6 +337,15 @@ router.post('/googlelogin', async (req, res) => {
             });
         } catch (error) {
             return res.status(500).json({ success, msg: 'Something went wrong. Please try again', err: error.message });
+        }
+
+        // Create user profile
+        try {
+            await userProfileModel.create({
+                userId: user.id,
+            });
+        } catch (error) {
+            return res.status(500).json({ success, msg: 'Something went wrong while createing user profile. Please try again', err: error.message });
         }
     }
 

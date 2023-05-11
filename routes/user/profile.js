@@ -122,9 +122,7 @@ router.post('/updateloction', [
     body('userCity', "Please provide your city name").trim().not().isEmpty().escape(),
     body('userState', 'Please provide your state name').trim().not().isEmpty().escape(),
 ], Authenticate, async (req, res) => {
-    console.log(req.body);
     let success = false;
-    let user = null;
     let result = null;
 
     // If there are errors, return bad request and the errors
@@ -133,42 +131,20 @@ router.post('/updateloction', [
         return res.status(400).json({ success, msg: errors.errors[0].msg });
     }
 
+    // Update user location
     try {
-        user = await userProfileModel.exists({ userId: new mongoose.Types.ObjectId(req.user) });
-    } catch (error) {
-        return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
-    }
-
-    if (!user) {
-        // Save user location
-        try {
-            result = await userProfileModel.create({
-                userId: req.user,
-                location: {
-                    userCity: req.body.userCity,
-                    userState: req.body.userState
-                }
-            });
-        } catch (error) {
-            return res.status(500).json({ success, msg: 'Something went wrong while saving the location. Please try again', err: error.message });
-        }
-        result = result.location;
-    } else {
-        // Update user location
-        try {
-            result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
+        result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
+            {
+                $set:
                 {
-                    $set:
-                    {
-                        location: {
-                            userCity: req.body.userCity,
-                            userState: req.body.userState
-                        }
+                    location: {
+                        userCity: req.body.userCity,
+                        userState: req.body.userState
                     }
-                }, { new: true }).select('location');
-        } catch (error) {
-            return res.status(500).json({ success, msg: 'Something went wrong while updating the location. Please try again', err: error.message });
-        }
+                }
+            }, { new: true }).select('location');
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong while updating the location. Please try again', err: error.message });
     }
 
     success = true
@@ -187,7 +163,6 @@ router.post('/updateeducation', [
     body('degree.collegeName', 'Please provide your Degree college name correctly').trim().escape(),
 ], Authenticate, async (req, res) => {
     let success = false;
-    let user = null;
     let result = null;
 
     const { ssc, hsc, diploma, degree } = req.body;
@@ -196,14 +171,6 @@ router.post('/updateeducation', [
     let errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ success, msg: errors.errors[0].msg });
-    }
-
-    // Check if user profile exist or not
-    try {
-        user = await userProfileModel.exists({ userId: new mongoose.Types.ObjectId(req.user) });
-        console.log('user: ', user);
-    } catch (error) {
-        return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
     }
 
     // SSC 
@@ -226,40 +193,22 @@ router.post('/updateeducation', [
         return res.status(400).json({ success, msg: "Please provide your Degree college name and stream name" });
     }
 
-    if (!user) {
-        // Save user location
-        try {
-            result = await userProfileModel.create({
-                userId: req.user,
-                education: {
-                    ssc,
-                    hsc,
-                    diploma,
-                    degree
-                }
-            });
-        } catch (error) {
-            return res.status(500).json({ success, msg: 'Something went wrong while saving the education details. Please try again', err: error.message });
-        }
-        result = result.education;
-    } else {
-        // Update user location
-        try {
-            result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
+    // Update user location
+    try {
+        result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
+            {
+                $set:
                 {
-                    $set:
-                    {
-                        education: {
-                            ssc,
-                            hsc,
-                            diploma,
-                            degree
-                        }
+                    education: {
+                        ssc,
+                        hsc,
+                        diploma,
+                        degree
                     }
-                }, { new: true }).select('education');
-        } catch (error) {
-            return res.status(500).json({ success, msg: 'Something went wrong while updating the education details. Please try again', err: error.message });
-        }
+                }
+            }, { new: true }).select('education');
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong while updating the education details. Please try again', err: error.message });
     }
 
     success = true
@@ -286,34 +235,15 @@ router.post('/updateskill', [
         return res.status(500).json({ success, msg: errors.errors[0].msg });
     }
 
-    // Check if user profile exist or not
+    // update collaborator skill
     try {
-        user = await userProfileModel.exists({ userId: new mongoose.Types.ObjectId(req.user) });
-    } catch (error) {
-        return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
-    }
-
-    if (!user) {
-        try {
-            result = await userProfileModel.create({
-                userId: req.user,
+        await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) }, {
+            $set: {
                 skill: req.body.skill
-            });
-        } catch (error) {
-            return res.status(500).json({ success, msg: 'Something went wrong while saving the skill. Please try again', err: error.message });
-        }
-        result = result.skill;
-    } else {
-        // update collaborator skill
-        try {
-            await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) }, {
-                $set: {
-                    skill: req.body.skill
-                }
-            });
-        } catch (error) {
-            return res.status(500).json({ success, msg: 'Something went wrong while updating the skill. Please try again', err: error.message });
-        }
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong while updating the skill. Please try again', err: error.message });
     }
 
     success = true
@@ -360,122 +290,94 @@ router.post('/updateproject', Authenticate, async (req, res) => {
                 return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg });
             }
 
-            if (!user) {
-                // Upload new profile photo in folder
+            // Uploading first project
+            if (fields.projectId.length == 0) {
+                // Upload new project photo in folder
                 returnVal = uploadPhoto(files.photo, projectPhotoUploadPath);
                 if (returnVal.isError) {
                     return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
                 }
                 newProjectPhoto = `${APP_URL}/images/project_photo/${returnVal.newPhoto}`;
             } else {
-                // User is present but there is no project
-                if (fields.projectId.length == 0) {
-                    // Upload new profile photo in folder
-                    returnVal = uploadPhoto(files.photo, projectPhotoUploadPath);
-                    if (returnVal.isError) {
-                        return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
+                // User is updating project photo
+                for (let key in user.project) {
+                    if (user.project[key].id == fields.projectId) {
+                        oldProjectPhoto = user.project[key].photo
                     }
-                    newProjectPhoto = `${APP_URL}/images/project_photo/${returnVal.newPhoto}`;
-                } else {
-                    // User is updating project photo
-                    for (let key in user.project) {
-                        if (user.project[key].id == fields.projectId) {
-                            oldProjectPhoto = user.project[key].photo
-                        }
-                    }
-
-                    // Delete photo from folder
-                    deletePreviousPhoto(oldProjectPhoto, projectPhotoUploadPath);
-
-                    // Upload new project photo
-                    returnVal = uploadPhoto(files.photo, projectPhotoUploadPath);
-                    if (returnVal.isError) {
-                        return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
-                    }
-                    newProjectPhoto = `${APP_URL}/images/project_photo/${returnVal.newPhoto}`;
                 }
+
+                // Delete photo from folder
+                deletePreviousPhoto(oldProjectPhoto, projectPhotoUploadPath);
+
+                // Upload new project photo
+                returnVal = uploadPhoto(files.photo, projectPhotoUploadPath);
+                if (returnVal.isError) {
+                    return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
+                }
+                newProjectPhoto = `${APP_URL}/images/project_photo/${returnVal.newPhoto}`;
             }
         }
 
-        if (!user) {
+        // User is uploading fist project
+        if (fields.projectId.length == 0) {
             try {
-                result = await userProfileModel.create({
-                    userId: req.user,
-                    project: [
+                // Saving first project in db
+                if (user.project.length == 0) {
+                    result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
                         {
-                            name: fields.name,
-                            description: fields.description,
-                            projectLink: fields.projectLink,
-                            githubLink: fields.githubLink,
-                            photo: newProjectPhoto
-                        }
-                    ]
-                });
+                            $set: {
+                                project: [
+                                    {
+                                        name: fields.name,
+                                        description: fields.description,
+                                        projectLink: fields.projectLink,
+                                        githubLink: fields.githubLink,
+                                        photo: newProjectPhoto
+                                    }
+                                ]
+                            }
+                        }, { new: true }).select('project');
+                } else {
+                    // Appending project in db
+                    result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
+                        {
+                            $push: {
+                                project: [
+                                    {
+                                        name: fields.name,
+                                        description: fields.description,
+                                        projectLink: fields.projectLink,
+                                        githubLink: fields.githubLink,
+                                        photo: newProjectPhoto
+                                    }
+                                ]
+                            }
+                        }, { new: true }).select('project');
+                }
             } catch (error) {
-                return res.status(500).json({ success, msg: 'Something went wrong while saving the education details. Please try again', err: error.message });
+                return res.status(500).json({ success, msg: 'Something went wrong while updating the education details. Please try again', err: error.message });
             }
             result = result.project;
         } else {
-            // User is present but there is no project
-            if (fields.projectId.length == 0) {
-                try {
-                    // Saving first project in db
-                    if (user.project.length == 0) {
-                        result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
-                            {
-                                $set: {
-                                    project: [
-                                        {
-                                            name: fields.name,
-                                            description: fields.description,
-                                            projectLink: fields.projectLink,
-                                            githubLink: fields.githubLink,
-                                            photo: newProjectPhoto
-                                        }
-                                    ]
-                                }
-                            }, { new: true }).select('project');
-                    } else {
-                        // Appending project in db
-                        result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
-                            {
-                                $push: {
-                                    project: [
-                                        {
-                                            name: fields.name,
-                                            description: fields.description,
-                                            projectLink: fields.projectLink,
-                                            githubLink: fields.githubLink,
-                                            photo: newProjectPhoto
-                                        }
-                                    ]
-                                }
-                            }, { new: true }).select('project');
-                    }
-                } catch (error) {
-                    return res.status(500).json({ success, msg: 'Something went wrong while updating the education details. Please try again', err: error.message });
-                }
-                result = result.project;
+            // User is updaing existing project
+            let projectPhoto = null;
+            if (files.photo) {
+                projectPhoto = newProjectPhoto;
             } else {
-                // User is updaing existing project
-                let projectPhoto = null;
-                if (files.photo) {
-                    projectPhoto = newProjectPhoto;
-                } else {
-                    projectPhoto = oldProjectPhoto;
-                }
-
-                result = await userProfileModel.findOneAndUpdate({ 'project._id': new mongoose.Types.ObjectId(fields.projectId) }, {
-                    $set: {
-                        'project.$.name': fields.name,
-                        'project.$.description': fields.description,
-                        'project.$.projectLink': fields.projectLink,
-                        'project.$.githubLink': fields.githubLink,
-                        'project.$.photo': projectPhoto
-                    }
-                }, { new: true }).select('project');
+                projectPhoto = oldProjectPhoto;
             }
+
+            result = await userProfileModel.findOneAndUpdate({ 'project._id': new mongoose.Types.ObjectId(fields.projectId) }, {
+                $set: {
+                    'project.$.name': fields.name,
+                    'project.$.description': fields.description,
+                    'project.$.projectLink': fields.projectLink,
+                    'project.$.githubLink': fields.githubLink,
+                    'project.$.photo': projectPhoto
+                }
+            }, { new: true }).select('project');
         }
+
         success = true;
         res.json({ success, result, msg: 'Your project has been updated' });
     });
