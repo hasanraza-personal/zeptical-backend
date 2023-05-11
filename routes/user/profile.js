@@ -20,8 +20,8 @@ if (process.env.APP_ENV === 'production') {
     APP_URL = process.env.DEVELOPMENT_URL
 }
 
-const uploadPath = path.join(__dirname, '../../public/images/profile_photo/user');
-const projectUploadPath = path.join(__dirname, '../public/images/project-photo');
+const userPhotoUploadPath = path.join(__dirname, '../../public/images/profile_photo/user');
+const projectPhotoUploadPath = path.join(__dirname, '../../public/images/project_photo');
 
 // Route 1: Get user details using: POST '/api/user/profile/getuser'
 router.get('/getuser', Authenticate, async (req, res) => {
@@ -37,23 +37,23 @@ router.get('/getuser', Authenticate, async (req, res) => {
     }
 });
 
-// Route 2: Update user details using: POST '/api/user/profile/updatebasicdetails'
+// Route 2: Update user basic details using: POST '/api/user/profile/updatebasicdetails'
 router.post('/updatebasicdetails', Authenticate, async (req, res) => {
     let success = false;
-    let newProfilePhoto = null;
     let user = null;
+    let returnVal = null;
 
     let form = new formidable.IncomingForm();
     form.parse(req, async (err, fields, files) => {
-        if (fields.userFullname.length < 4) {
+        if (fields.userFullname.trim().length < 4) {
             return res.status(401).json({ success, msg: 'Name should be atleast 3 characters long' });
         }
 
-        if (fields.username.length < 4) {
+        if (fields.username.trim().length < 4) {
             return res.status(401).json({ success, msg: 'Username should be atleast 3 characters long' });
         }
 
-        if (fields.userGender.length === 0) {
+        if (fields.userGender.trim().length === 0) {
             return res.status(401).json({ success, msg: 'Please provide your gender' });
         }
 
@@ -69,48 +69,29 @@ router.post('/updatebasicdetails', Authenticate, async (req, res) => {
             return res.status(500).json({ success, msg: 'Something went wrong. Please try again', err: error.message });
         }
 
-
         if (files.userPhoto) {
-            let imgTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-            // Return -1 of index of array in string not found in array
-            if (imgTypes.indexOf(files.userPhoto.mimetype) === -1) {
-                return res.status(400).json({ success, msg: 'Only jpeg, jpg and png format are allowed' });
+            // Verify photo szie and type
+            returnVal = verifyPhoto(files.userPhoto);
+            if (returnVal.isError) {
+                return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg });
             }
 
-            if (files.userPhoto.size > 5242880) {
-                return res.status(400).json({ success, msg: 'Please upload the photo below 5MB' });
-            }
-
-            // Fetch previous founder photo and delete it from folder
+            // Fetch previous profile photo and delete it from folder
             try {
-                let user = await userModel.findById(new mongoose.Types.ObjectId(req.user)).select('-_id userPhoto')
-                let oldUserPhoto = user.userPhoto.split('/').pop()
+                let user = await userModel.findById(new mongoose.Types.ObjectId(req.user)).select('-_id userPhoto');
 
-                let profilePhotoPath = path.join(uploadPath, oldUserPhoto);
-
-                if (fs.existsSync(profilePhotoPath)) {
-                    fs.unlinkSync(profilePhotoPath)
-                }
+                // Delete photo from folder
+                deletePreviousPhoto(user.userPhoto, userPhotoUploadPath);
             } catch (error) {
                 return res.status(500).json({ success, msg: 'Something went wrong while deleting the previous photo. Please try again', err: error.message });
             }
 
-            // Upload profile photo in folder
-            try {
-                // newProfilePhoto = new Date().getTime() + '.jpeg';
-                newProfilePhoto = files.userPhoto.newFilename + '.jpeg';
-
-                sharp(files.userPhoto.filepath).jpeg({
-                    quality: 70
-                }).withMetadata().toFile(path.join(uploadPath, newProfilePhoto), (error, info) => {
-                    if (error) {
-                        return res.status(400).json({ success, msg: 'Something went wrong during compression. Please try again', err: error.message });
-                    }
-                });
-                newProfilePhoto = `${APP_URL}/images/profile_photo/user/${newProfilePhoto}`;
-            } catch (error) {
-                return res.status(400).json({ success, msg: 'Something went wrong while saving the photo in folder. Please try again', err: error.message });
+            // Upload new profile photo in folder
+            returnVal = uploadPhoto(files.userPhoto, userPhotoUploadPath);
+            if (returnVal.isError) {
+                return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
             }
+            newProfilePhoto = `${APP_URL}/images/profile_photo/user/${returnVal.newPhoto}`;
 
             // Update userphoto
             try {
@@ -339,62 +320,216 @@ router.post('/updateskill', [
     res.json({ success, data: req.body, msg: 'Your skills has been saved' });
 })
 
-// Route 6: Update user project using: POST '/api/user/profile/updateproject';
-router.post('/updateproject', [
-    body('project', 'Please provide your project').isArray({ min: 1, max: 5 }).custom((val) => {
-        val.forEach((project) => {
-            if (project.name.trim().length === 0) {
-                return Promise.reject('Please provide your project name');
-            }
-            if (project.description.trim().length === 0) {
-                return Promise.reject('Please provide your project description');
-            }
-            if (project.projectLink.trim().length === 0) {
-                return Promise.reject('Please provide your project link');
-            }
-            if (project.githubLink.trim().length === 0) {
-                return Promise.reject('Please provide your project github link');
-            }
-            if (project.photo.trim().length === 0) {
-                return Promise.reject('Please provide your project photo');
-            }
-        });
-        return true;
-    }),
-], Authenticate, async (req, res) => {
-    let success = false
+// Route 6: Update user details using: POST '/api/user/profile/updateproject'
+router.post('/updateproject', Authenticate, async (req, res) => {
+    let success = false;
+    let newProjectPhoto = null;
+    let oldProjectPhoto = null;
+    let user = null;
+    let returnVal = null;
 
-    // If there are errors, return bad request and the errors
-    let errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ success, msg: errors.errors[0].msg });
-    }
-
-    const { project } = req.body
-
-    if (project.photo) {
-        // Delete photo from folder
-        let oldProjectPhoto = photo.split('/').pop()
-        let projectPhotoPath = path.join(projectPhotoUploadPath, oldProjectPhoto);
-
-        if (fs.existsSync(projectPhotoPath)) {
-            fs.unlinkSync(projectPhotoPath)
+    let form = new formidable.IncomingForm();
+    form.parse(req, async (err, fields, files) => {
+        if (fields.name.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Please provide your project name' });
         }
+        if (fields.description.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Please provide your project description' });
+        }
+
+        if (fields.projectLink.trim().length == 0 && fields.githubLink.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Please provide your project link or github link' });
+        }
+
+        if (fields.projectId.trim().length == 0 && !files.photo) {
+            return res.status(401).json({ success, msg: 'Please provide your project photo' });
+        }
+
+        // Check if user profile exist or not
+        try {
+            user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) });
+        } catch (error) {
+            return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+        }
+
+        // Upload project photo and save
+        if (files.photo) {
+            // Verify photo size and type
+            returnVal = verifyPhoto(files.photo)
+            if (returnVal.isError) {
+                return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg });
+            }
+
+            if (!user) {
+                // Upload new profile photo in folder
+                returnVal = uploadPhoto(files.photo, projectPhotoUploadPath);
+                if (returnVal.isError) {
+                    return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
+                }
+                newProjectPhoto = `${APP_URL}/images/project_photo/${returnVal.newPhoto}`;
+            } else {
+                // User is present but there is no project
+                if (fields.projectId.length == 0) {
+                    // Upload new profile photo in folder
+                    returnVal = uploadPhoto(files.photo, projectPhotoUploadPath);
+                    if (returnVal.isError) {
+                        return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
+                    }
+                    newProjectPhoto = `${APP_URL}/images/project_photo/${returnVal.newPhoto}`;
+                } else {
+                    // User is updating project photo
+                    for (let key in user.project) {
+                        if (user.project[key].id == fields.projectId) {
+                            oldProjectPhoto = user.project[key].photo
+                        }
+                    }
+
+                    // Delete photo from folder
+                    deletePreviousPhoto(oldProjectPhoto, projectPhotoUploadPath);
+
+                    // Upload new project photo
+                    returnVal = uploadPhoto(files.photo, projectPhotoUploadPath);
+                    if (returnVal.isError) {
+                        return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
+                    }
+                    newProjectPhoto = `${APP_URL}/images/project_photo/${returnVal.newPhoto}`;
+                }
+            }
+        }
+
+        if (!user) {
+            try {
+                result = await userProfileModel.create({
+                    userId: req.user,
+                    project: [
+                        {
+                            name: fields.name,
+                            description: fields.description,
+                            projectLink: fields.projectLink,
+                            githubLink: fields.githubLink,
+                            photo: newProjectPhoto
+                        }
+                    ]
+                });
+            } catch (error) {
+                return res.status(500).json({ success, msg: 'Something went wrong while saving the education details. Please try again', err: error.message });
+            }
+            result = result.project;
+        } else {
+            // User is present but there is no project
+            if (fields.projectId.length == 0) {
+                try {
+                    // Saving first project in db
+                    if (user.project.length == 0) {
+                        result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
+                            {
+                                $set: {
+                                    project: [
+                                        {
+                                            name: fields.name,
+                                            description: fields.description,
+                                            projectLink: fields.projectLink,
+                                            githubLink: fields.githubLink,
+                                            photo: newProjectPhoto
+                                        }
+                                    ]
+                                }
+                            }, { new: true }).select('project');
+                    } else {
+                        // Appending project in db
+                        result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
+                            {
+                                $push: {
+                                    project: [
+                                        {
+                                            name: fields.name,
+                                            description: fields.description,
+                                            projectLink: fields.projectLink,
+                                            githubLink: fields.githubLink,
+                                            photo: newProjectPhoto
+                                        }
+                                    ]
+                                }
+                            }, { new: true }).select('project');
+                    }
+                } catch (error) {
+                    return res.status(500).json({ success, msg: 'Something went wrong while updating the education details. Please try again', err: error.message });
+                }
+                result = result.project;
+            } else {
+                // User is updaing existing project
+                let projectPhoto = null;
+                if (files.photo) {
+                    projectPhoto = newProjectPhoto;
+                } else {
+                    projectPhoto = oldProjectPhoto;
+                }
+
+                result = await userProfileModel.findOneAndUpdate({ 'project._id': new mongoose.Types.ObjectId(fields.projectId) }, {
+                    $set: {
+                        'project.$.name': fields.name,
+                        'project.$.description': fields.description,
+                        'project.$.projectLink': fields.projectLink,
+                        'project.$.githubLink': fields.githubLink,
+                        'project.$.photo': projectPhoto
+                    }
+                }, { new: true }).select('project');
+            }
+        }
+        success = true;
+        res.json({ success, result, msg: 'Your project has been updated' });
+    });
+});
+
+
+// Verify photo size and type
+const verifyPhoto = (photo) => {
+    let isError = false;
+    let imgTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+
+    if (imgTypes.indexOf(photo.mimetype) === -1) {
+        isError = true;
+        return { isError, statusCode: 500, msg: "Only jpeg, jpg and png format are allowed" }
     }
 
-    // update project details
+    if (photo.size > 15728640) {
+        isError = true;
+        return { isError, statusCode: 500, msg: "Please upload the photo below 15MB" }
+    }
+    return { isError }
+};
+
+// Delete previous photo from folder
+const deletePreviousPhoto = (photo, uploadPath) => {
+    let oldPhoto = photo.split('/').pop()
+
+    let photoPath = path.join(uploadPath, oldPhoto);
+
+    if (fs.existsSync(photoPath)) {
+        fs.unlinkSync(photoPath)
+    }
+};
+
+// Upload new photo in folder
+const uploadPhoto = (photo, uploadPath) => {
+    let isError = false;
+
     try {
-        await collaboratorModal.findOneAndUpdate({ userid: mongoose.Types.ObjectId(req.user) }, {
-            $set: {
-                project
+        let newPhoto = photo.newFilename + '.jpeg';
+
+        sharp(photo.filepath).jpeg({
+            quality: 70
+        }).withMetadata().toFile(path.join(uploadPath, newPhoto), (error, info) => {
+            if (error) {
+                isError = true;
+                return { isError, statusCode: 500, msg: "Something went wrong during compression. Please try again", err: error.message }
             }
         });
+        return { isError, newPhoto };
     } catch (error) {
-        return res.status(400).json({ success, msg: 'Something went wrong. Please try again', err: error.message });
+        isError = true;
+        return { isError, statusCode: 500, msg: "Something went wrong while uploading the photo in folder. Please try again", err: error.message }
     }
-
-    success = true
-    res.json({ success, data: req.body, msg: 'Your project details has been updated' });
-})
+};
 
 module.exports = router;

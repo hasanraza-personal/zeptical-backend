@@ -5,7 +5,7 @@ const Authenticate = (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (token == null) {
-        res.status(401).send({ msg: "Access Denied" })
+        return res.status(401).json({ msg: "Access Denied" })
     }
 
     try {

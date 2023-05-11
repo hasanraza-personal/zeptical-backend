@@ -49,9 +49,6 @@ const UserProfileSchema = new mongoose.Schema({
     skill: [],
     project: [
         {
-            projectId: {
-                type: String,
-            },
             name: {
                 type: String,
             },
