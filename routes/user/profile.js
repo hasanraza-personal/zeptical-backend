@@ -22,6 +22,7 @@ if (process.env.APP_ENV === 'production') {
 
 const userPhotoUploadPath = path.join(__dirname, '../../public/images/profile_photo/user');
 const projectPhotoUploadPath = path.join(__dirname, '../../public/images/project_photo');
+const internshipCertificateUploadPath = path.join(__dirname, '../../public/images/internship_certificate');
 
 // Route 1: Get user details using: POST '/api/user/profile/getuser'
 router.get('/getuser', Authenticate, async (req, res) => {
@@ -250,7 +251,7 @@ router.post('/updateskill', [
     res.json({ success, data: req.body, msg: 'Your skills has been saved' });
 })
 
-// Route 6: Update user details using: POST '/api/user/profile/updateproject'
+// Route 6: Update user project details using: POST '/api/user/profile/updateproject'
 router.post('/updateproject', Authenticate, async (req, res) => {
     let success = false;
     let newProjectPhoto = null;
@@ -279,7 +280,7 @@ router.post('/updateproject', Authenticate, async (req, res) => {
         try {
             user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) });
         } catch (error) {
-            return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+            return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
         }
 
         // Upload project photo and save
@@ -383,6 +384,324 @@ router.post('/updateproject', Authenticate, async (req, res) => {
     });
 });
 
+// Route 7: Delete user project using: POST '/api/user/profile/deleteproject'
+router.post('/deleteproject', Authenticate, async (req, res) => {
+    let success = false;
+    let oldProjectPhoto = null;
+
+    if (req.body.projectId.length == 0) {
+        return res.status(400).json({ success, msg: 'Project id is not present' });
+    }
+
+    try {
+        let user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) });
+
+        // Fetch project photo
+        for (let key in user.project) {
+            if (user.project[key].id == req.body.projectId) {
+                oldProjectPhoto = user.project[key].photo
+            }
+        }
+
+        // Delete photo from folder
+        deletePreviousPhoto(oldProjectPhoto, projectPhotoUploadPath);
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong while fetching project details. Please try again', err: error.message });
+    }
+
+    try {
+        let result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) }, {
+            $pull: {
+                project: {
+                    _id: new mongoose.Types.ObjectId(req.body.projectId)
+                }
+
+            }
+        }, { new: true }).select('project');
+
+        success = true;
+        res.json({ success, result, msg: 'Your project has been deleted' });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong while deleting the project. Please try again', err: error.message });
+    }
+});
+
+// Route 8: Update user internship details using: POST '/api/user/profile/updateinternship'
+router.post('/updateinternship', Authenticate, async (req, res) => {
+    let success = false;
+    let newInternshipCertificate = null;
+    let oldInternshipCertificate = null;
+    let user = null;
+    let returnVal = null;
+
+    let form = new formidable.IncomingForm();
+
+    form.parse(req, async (err, fields, files) => {
+        if (fields.companyName.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Please provide the company name in which you did internship' });
+        }
+        if (fields.duration.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Please provide your internship duration' });
+        }
+
+        if (fields.stipends.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Does this intenship provides stipends?' });
+        }
+
+        if (fields.description.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'In a few words describe about the work that you did in internship' });
+        }
+
+        if (fields.internshipId.trim().length == 0 && !files.certificate) {
+            return res.status(401).json({ success, msg: 'In a few words describe about the work that you did in internship' });
+        }
+
+        // Get user profile from DB
+        try {
+            user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) });
+        } catch (error) {
+            return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+        }
+
+        // Upload certificate in folder
+        if (files.certificate) {
+            // Verify certificate size and type
+            returnVal = verifyPhoto(files.certificate)
+            if (returnVal.isError) {
+                return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg });
+            }
+
+            // Uploading first certificate in folder
+            if (fields.internshipId.length == 0) {
+                // Upload new certificate in folder
+                returnVal = uploadPhoto(files.certificate, internshipCertificateUploadPath);
+                if (returnVal.isError) {
+                    return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
+                }
+                newInternshipCertificate = `${APP_URL}/images/internship_certificate/${returnVal.newPhoto}`;
+            } else {
+                // User is updating certificate
+                for (let key in user.internship) {
+                    if (user.internship[key].id == fields.internshipId) {
+                        oldInternshipCertificate = user.internship[key].certificate
+                    }
+                }
+
+                // Delete certificate from folder
+                deletePreviousPhoto(oldInternshipCertificate, internshipCertificateUploadPath);
+
+                // Upload new certificate
+                returnVal = uploadPhoto(files.certificate, internshipCertificateUploadPath);
+                if (returnVal.isError) {
+                    return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
+                }
+                newInternshipCertificate = `${APP_URL}/images/internship_certificate/${returnVal.newPhoto}`;
+            }
+        }
+
+        // User is uploading fist internship
+        if (fields.internshipId.length == 0) {
+            try {
+                // Appending internship in db
+                result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
+                    {
+                        $push: {
+                            internship: [
+                                {
+                                    companyName: fields.companyName,
+                                    duration: fields.duration,
+                                    stipends: fields.stipends,
+                                    description: fields.description,
+                                    certificate: newInternshipCertificate
+                                }
+                            ]
+                        }
+                    }, { new: true }).select('internship');
+            } catch (error) {
+                return res.status(500).json({ success, msg: 'Something went wrong while updating the education details. Please try again', err: error.message });
+            }
+        } else {
+            // User is updaing existing internship
+            let internshipcertificate = null;
+            if (files.certificate) {
+                internshipcertificate = newInternshipCertificate;
+            } else {
+                internshipcertificate = newInternshipCertificate;
+            }
+
+            result = await userProfileModel.findOneAndUpdate({ 'internship._id': new mongoose.Types.ObjectId(fields.internshipId) }, {
+                $set: {
+                    'internship.$.companyName': fields.companyName,
+                    'internship.$.duration': fields.duration,
+                    'internship.$.stipends': fields.stipends,
+                    'internship.$.description': fields.description,
+                    'internship.$.certificate': internshipcertificate
+                }
+            }, { new: true }).select('internship');
+        }
+
+        success = true;
+        res.json({ success, result, msg: 'Your internship has been updated' });
+    });
+});
+
+// Route 9: Delete user internship using: POST '/api/user/profile/deleteinternship'
+router.post('/deleteinternship', Authenticate, async (req, res) => {
+    let success = false;
+    let oldInternshipCertificate = null;
+
+    if (req.body.internshipId.length == 0) {
+        return res.status(400).json({ success, msg: 'Internship id is not present' });
+    }
+
+    try {
+        let user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) });
+
+        // Fetch project photo
+        for (let key in user.internship) {
+            if (user.internship[key].id == req.body.internshipId) {
+                oldInternshipCertificate = user.internship[key].certificate
+            }
+            console.log('oldInternshipCertificate: ', oldInternshipCertificate);
+        }
+
+        // Delete photo from folder
+        deletePreviousPhoto(oldInternshipCertificate, internshipCertificateUploadPath);
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong while fetching internship details. Please try again', err: error.message });
+    }
+
+    try {
+        let result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) }, {
+            $pull: {
+                internship: {
+                    _id: new mongoose.Types.ObjectId(req.body.internshipId)
+                }
+
+            }
+        }, { new: true }).select('internship');
+
+        success = true;
+        res.json({ success, result, msg: 'Your internship has been deleted' });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong while deleting the internship. Please try again', err: error.message });
+    }
+});
+
+// Route 8: Update user achievement details using: POST '/api/user/profile/updateachievement'
+router.post('/updateinternship', Authenticate, async (req, res) => {
+    let success = false;
+    let newAchievementCertificate = null;
+    let oldAchievementCertificate = null;
+    let user = null;
+    let returnVal = null;
+
+    let form = new formidable.IncomingForm();
+
+    form.parse(req, async (err, fields, files) => {
+        if (fields.name.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Please provide the company name in which you did internship' });
+        }
+        if (fields.level.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Please provide your internship duration' });
+        }
+
+        if (fields.description.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'In a few words describe about the work that you did in internship' });
+        }
+
+        if (fields.internshipId.trim().length == 0 && !files.certificate) {
+            return res.status(401).json({ success, msg: 'In a few words describe about the work that you did in internship' });
+        }
+
+        // Get user profile from DB
+        try {
+            user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) });
+        } catch (error) {
+            return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+        }
+
+        // Upload certificate in folder
+        if (files.certificate) {
+            // Verify certificate size and type
+            returnVal = verifyPhoto(files.certificate)
+            if (returnVal.isError) {
+                return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg });
+            }
+
+            // Uploading first certificate in folder
+            if (fields.internshipId.length == 0) {
+                // Upload new certificate in folder
+                returnVal = uploadPhoto(files.certificate, internshipCertificateUploadPath);
+                if (returnVal.isError) {
+                    return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
+                }
+                newInternshipCertificate = `${APP_URL}/images/internship_certificate/${returnVal.newPhoto}`;
+            } else {
+                // User is updating certificate
+                for (let key in user.internship) {
+                    if (user.internship[key].id == fields.internshipId) {
+                        oldInternshipCertificate = user.internship[key].certificate
+                    }
+                }
+
+                // Delete certificate from folder
+                deletePreviousPhoto(oldInternshipCertificate, internshipCertificateUploadPath);
+
+                // Upload new certificate
+                returnVal = uploadPhoto(files.certificate, internshipCertificateUploadPath);
+                if (returnVal.isError) {
+                    return res.status(returnVal.statusCode).json({ success, msg: returnVal.msg, err: returnVal.err });
+                }
+                newInternshipCertificate = `${APP_URL}/images/internship_certificate/${returnVal.newPhoto}`;
+            }
+        }
+
+        // User is uploading fist internship
+        if (fields.internshipId.length == 0) {
+            try {
+                // Appending internship in db
+                result = await userProfileModel.findOneAndUpdate({ userId: new mongoose.Types.ObjectId(req.user) },
+                    {
+                        $push: {
+                            internship: [
+                                {
+                                    companyName: fields.companyName,
+                                    duration: fields.duration,
+                                    stipends: fields.stipends,
+                                    description: fields.description,
+                                    certificate: newInternshipCertificate
+                                }
+                            ]
+                        }
+                    }, { new: true }).select('internship');
+            } catch (error) {
+                return res.status(500).json({ success, msg: 'Something went wrong while updating the education details. Please try again', err: error.message });
+            }
+        } else {
+            // User is updaing existing internship
+            let internshipcertificate = null;
+            if (files.certificate) {
+                internshipcertificate = newInternshipCertificate;
+            } else {
+                internshipcertificate = newInternshipCertificate;
+            }
+
+            result = await userProfileModel.findOneAndUpdate({ 'internship._id': new mongoose.Types.ObjectId(fields.internshipId) }, {
+                $set: {
+                    'internship.$.companyName': fields.companyName,
+                    'internship.$.duration': fields.duration,
+                    'internship.$.stipends': fields.stipends,
+                    'internship.$.description': fields.description,
+                    'internship.$.certificate': internshipcertificate
+                }
+            }, { new: true }).select('internship');
+        }
+
+        success = true;
+        res.json({ success, result, msg: 'Your internship has been updated' });
+    });
+});
 
 // Verify photo size and type
 const verifyPhoto = (photo) => {
@@ -399,18 +718,18 @@ const verifyPhoto = (photo) => {
         return { isError, statusCode: 500, msg: "Please upload the photo below 15MB" }
     }
     return { isError }
-};
+}
 
 // Delete previous photo from folder
-const deletePreviousPhoto = (photo, uploadPath) => {
-    let oldPhoto = photo.split('/').pop()
+const deletePreviousPhoto = (photoLink, uploadPath) => {
+    let oldPhoto = photoLink.split('/').pop()
 
     let photoPath = path.join(uploadPath, oldPhoto);
 
     if (fs.existsSync(photoPath)) {
         fs.unlinkSync(photoPath)
     }
-};
+}
 
 // Upload new photo in folder
 const uploadPhoto = (photo, uploadPath) => {
@@ -432,6 +751,6 @@ const uploadPhoto = (photo, uploadPath) => {
         isError = true;
         return { isError, statusCode: 500, msg: "Something went wrong while uploading the photo in folder. Please try again", err: error.message }
     }
-};
+}
 
 module.exports = router;

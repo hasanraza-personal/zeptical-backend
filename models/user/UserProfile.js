@@ -71,13 +71,13 @@ const UserProfileSchema = new mongoose.Schema({
             companyName: {
                 type: String,
             },
-            workDuration: {
+            duration: {
                 type: String,
             },
             stipends: {
                 type: String,
             },
-            workDescription: {
+            description: {
                 type: String,
             },
             certificate: {
@@ -87,16 +87,16 @@ const UserProfileSchema = new mongoose.Schema({
     ],
     achievement: [
         {
-            competitionName: {
+            name: {
                 type: String,
             },
-            competitionLevel: {
+            level: {
                 type: String,
             },
-            competitionDescription: {
+            description: {
                 type: String,
             },
-            competitionCertificate: {
+            certificate: {
                 type: String,
             },
         }
