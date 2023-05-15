@@ -27,7 +27,7 @@ router.get('/getuser', Authenticate, async (req, res) => {
     let success = false;
 
     try {
-        let user = await userModel.findById(new mongoose.Types.ObjectId(req.user)).select('-_id userFullname username userPhoto')
+        let user = await userModel.findById(new mongoose.Types.ObjectId(req.user)).select('-_id userFullname userEmail username userPhoto')
 
         success = true
         res.json({ success, user });
