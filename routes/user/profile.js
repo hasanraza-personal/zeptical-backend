@@ -55,7 +55,7 @@ router.get('/getuserprofile', Authenticate, async (req, res) => {
     let success = false;
 
     try {
-        let user = await userProfileModel.findById({ userId: new mongoose.Types.ObjectId(req.user) });
+        let user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) });
 
         success = true
         res.json({ success, user });
