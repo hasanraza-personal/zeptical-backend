@@ -285,11 +285,6 @@ router.post('/login', [
         return res.status(401).json({ success, msg: 'Email or password is incorrect' });
     }
 
-    // If user login through Google
-    if (user.googleId) {
-        return res.status(401).json({ success, msg: 'Google login detected' });
-    }
-
     // Compare password
     let passwordCompare = await bcrypt.compare(req.body.userPassword, user.userPassword);
     if (!passwordCompare) {

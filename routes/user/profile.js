@@ -50,6 +50,20 @@ router.get('/getuserdetails', Authenticate, async (req, res) => {
     }
 });
 
+// Route 3: Get user profile using: POST '/api/user/profile/getuserprofile'
+router.get('/getuserprofile', Authenticate, async (req, res) => {
+    let success = false;
+
+    try {
+        let user = await userProfileModel.findById({ userId: new mongoose.Types.ObjectId(req.user) });
+
+        success = true
+        res.json({ success, user });
+    } catch (error) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
 // Route 2: Update user basic details using: POST '/api/user/profile/updateprofile'
 router.post('/updateprofile', Authenticate, async (req, res) => {
     let success = false;
