@@ -332,7 +332,7 @@ router.post('/googlelogin', async (req, res) => {
                 userEmail: req.body.email,
                 userFullname: req.body.name,
                 username: username + randomNumber,
-                userPhoto: 'https://postimg.cc/F1BGqkpJ',
+                userPhoto: req.body.picture,
                 isVerified: true
             });
         } catch (error) {
@@ -395,13 +395,14 @@ router.post('/updateuser', [
                     userPhoto: `${APP_URL}/images/profile_photo/user/${newPhoto}`,
                     userGender
                 }
-            }, { new: true }).select('userPhoto userGender');
+            }, { new: true }).select('userFullname username userPhoto');
     } catch (error) {
         return res.status(400).json({ success, msg: 'Something went wrong. Please try again', err: error.message });
     }
 
     user = {
-        username,
+        userFullname: user.userFullname,
+        username: user.username,
         userPhoto: user.userPhoto
     }
 
