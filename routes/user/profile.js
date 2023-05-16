@@ -145,7 +145,7 @@ router.post('/updateprofile', Authenticate, async (req, res) => {
 });
 
 // Route 3: Update user location using: POST '/api/user/profile/updatelocation'
-router.post('/updateloction', [
+router.post('/updatelocation', [
     body('userCity', "Please provide your city name").trim().not().isEmpty().escape(),
     body('userState', 'Please provide your state name').trim().not().isEmpty().escape(),
 ], Authenticate, async (req, res) => {
