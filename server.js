@@ -46,7 +46,6 @@ app.get("/name", function (req, res) {
 // Available routes
 app.use('/api/user/auth', require('./routes/user/auth'));
 app.use('/api/user/profile', require('./routes/user/profile'));
-app.use('/api/user/extras', require('./routes/user/extras'));
 
 app.listen(PORT, () => {
     console.log(`Listening to PORT at ${PORT}`);

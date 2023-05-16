@@ -50,8 +50,8 @@ router.get('/getuserdetails', Authenticate, async (req, res) => {
     }
 });
 
-// Route 2: Update user basic details using: POST '/api/user/profile/updatebasicdetails'
-router.post('/updatebasicdetails', Authenticate, async (req, res) => {
+// Route 2: Update user basic details using: POST '/api/user/profile/updateprofile'
+router.post('/updateprofile', Authenticate, async (req, res) => {
     let success = false;
     let user = null;
     let returnVal = null;
