@@ -323,15 +323,32 @@ router.post('/googlelogin', async (req, res) => {
     if (!user) {
         try {
             userExist = false;
-            let username = req.body.given_name.split(" ").join("").toLowerCase();
-            // Generate 3 digit number
-            let randomNumber = Math.floor(100 + Math.random() * 9000);
+            let username = null;
+
+            username = req.body.email.substring(0, req.body.email.lastIndexOf("@"));
+
+            let result = await userModel.exists({ $and: [{ username }, { isVerified: true }] });
+
+            if (result) {
+                // Generate 4 digit number
+                let randomNumber = Math.floor(1000 + Math.random() * 9000);
+
+                let firstName = req.body.given_name.split(" ").join("").toLowerCase();
+
+                if (req.body.family_name) {
+                    let lastName = req.body.family_name.split(" ").join("").toLowerCase();
+
+                    username = `${lastName}.${firstName}${randomNumber}`
+                } else {
+                    username = `${firstName}${randomNumber}`
+                }
+            }
 
             user = await userModel.create({
                 googleId: req.body.sub,
                 userEmail: req.body.email,
                 userFullname: req.body.name,
-                username: username + randomNumber,
+                username: username,
                 userPhoto: req.body.picture,
                 isVerified: true
             });
@@ -395,10 +412,15 @@ router.post('/updateuser', [
                     userPhoto: `${APP_URL}/images/profile_photo/user/${newPhoto}`,
                     userGender
                 }
-            }, { new: true }).select('userFullname username userPhoto');
+            }, { new: true }).select('_id userFullname username userPhoto');
     } catch (error) {
         return res.status(400).json({ success, msg: 'Something went wrong. Please try again', err: error.message });
     }
+
+    let data = {
+        id: user.id
+    }
+    const authToken = jwt.sign(data, process.env.JWT_SECRET_KEY);
 
     user = {
         userFullname: user.userFullname,
@@ -407,7 +429,7 @@ router.post('/updateuser', [
     }
 
     success = true
-    res.json({ success, user, msg: "User profile has been updated successfully" });
+    res.json({ success, user, authToken, msg: "User profile has been updated successfully" });
 });
 
 // Route 6: Send recovery link using: POST "/api/user/auth/sendrecoverylink"

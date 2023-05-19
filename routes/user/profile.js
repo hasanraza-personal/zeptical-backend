@@ -27,7 +27,25 @@ router.get('/getuser', Authenticate, async (req, res) => {
     let success = false;
 
     try {
-        let user = await userModel.findById(new mongoose.Types.ObjectId(req.user)).select('-_id userFullname username userPhoto')
+        let user = await userModel.findById(new mongoose.Types.ObjectId(req.user)).select('_id userFullname username userPhoto')
+
+        success = true
+        res.json({ success, user });
+    } catch (error) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
+// Route 2: Get user details using: POST '/api/user/profile/getuser/:username'
+router.get('/getuser/:username', Authenticate, async (req, res) => {
+    let success = false;
+
+    try {
+        let user = await userModel.findOne({ username: req.params.username }).select('_id userFullname username userPhoto');
+
+        if (!user) {
+            return res.status(401).json({ success, msg: 'No user found', err: error.message });
+        }
 
         success = true
         res.json({ success, user });
@@ -50,17 +68,32 @@ router.get('/getuserdetails', Authenticate, async (req, res) => {
     }
 });
 
-// Route 3: Get user profile using: POST '/api/user/profile/getuserprofile'
-router.get('/getuserprofile', Authenticate, async (req, res) => {
+// Route 3: Get user profile using: POST '/api/user/profile/getuserprofile/:username'
+router.get('/getuserprofile/:username', Authenticate, async (req, res) => {
     let success = false;
+    let result = null;
+
+    if (!req.params.username) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please logout and try again.' });
+    }
 
     try {
-        let user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) });
+        result = await userModel.findOne({ username: req.params.username }).select('_id');
+
+        if (!result) {
+            return res.status(401).json({ success, msg: 'No user found', err: error.message });
+        }
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+
+    try {
+        let user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(result._id) });
 
         success = true
         res.json({ success, user });
     } catch (error) {
-        return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
     }
 });
 
