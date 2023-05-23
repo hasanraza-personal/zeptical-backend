@@ -22,7 +22,7 @@ const projectPhotoUploadPath = path.join(__dirname, '../../public/images/project
 const internshipCertificateUploadPath = path.join(__dirname, '../../public/images/internship_certificate');
 const achievementCertificateUploadPath = path.join(__dirname, '../../public/images/achievement_certificate');
 
-// Route 1: Get user details using: POST '/api/user/profile/getuser'
+// Route 1: Get user details for redux using: POST '/api/user/profile/getuser'
 router.get('/getuser', Authenticate, async (req, res) => {
     let success = false;
 
@@ -36,7 +36,7 @@ router.get('/getuser', Authenticate, async (req, res) => {
     }
 });
 
-// Route 2: Get user details using: POST '/api/user/profile/getuser/:username'
+// Route 2: Get user details to display on profile page using: POST '/api/user/profile/getuser/:username'
 router.get('/getuser/:username', Authenticate, async (req, res) => {
     let success = false;
 
@@ -44,7 +44,7 @@ router.get('/getuser/:username', Authenticate, async (req, res) => {
         let user = await userModel.findOne({ username: req.params.username }).select('_id userFullname username userPhoto');
 
         if (!user) {
-            return res.status(401).json({ success, msg: 'No user found', err: error.message });
+            return res.status(401).json({ success, msg: 'No user found' });
         }
 
         success = true
@@ -54,7 +54,7 @@ router.get('/getuser/:username', Authenticate, async (req, res) => {
     }
 });
 
-// Route 2: Get all user details using: POST '/api/user/profile/getuserdetails'
+// Route 3: Get user details for edit profile page using: POST '/api/user/profile/getuserdetails'
 router.get('/getuserdetails', Authenticate, async (req, res) => {
     let success = false;
 
@@ -68,7 +68,7 @@ router.get('/getuserdetails', Authenticate, async (req, res) => {
     }
 });
 
-// Route 3: Get user profile using: POST '/api/user/profile/getuserprofile/:username'
+// Route 4: Get user profile details to display on profile page using: POST '/api/user/profile/getuserprofile/:username'
 router.get('/getuserprofile/:username', Authenticate, async (req, res) => {
     let success = false;
     let result = null;
@@ -81,7 +81,7 @@ router.get('/getuserprofile/:username', Authenticate, async (req, res) => {
         result = await userModel.findOne({ username: req.params.username }).select('_id');
 
         if (!result) {
-            return res.status(401).json({ success, msg: 'No user found', err: error.message });
+            return res.status(401).json({ success, msg: 'No user found' });
         }
     } catch (error) {
         return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
@@ -97,7 +97,7 @@ router.get('/getuserprofile/:username', Authenticate, async (req, res) => {
     }
 });
 
-// Route 2: Update user basic details using: POST '/api/user/profile/updateprofile'
+// Route 5: Update user basic details using: POST '/api/user/profile/updateprofile'
 router.post('/updateprofile', Authenticate, async (req, res) => {
     let success = false;
     let user = null;
@@ -177,7 +177,7 @@ router.post('/updateprofile', Authenticate, async (req, res) => {
     });
 });
 
-// Route 3: Update user location using: POST '/api/user/profile/updatelocation'
+// Route 6: Update user location using: POST '/api/user/profile/updatelocation'
 router.post('/updatelocation', [
     body('userCity', "Please provide your city name").trim().not().isEmpty().escape(),
     body('userState', 'Please provide your state name').trim().not().isEmpty().escape(),
@@ -211,7 +211,7 @@ router.post('/updatelocation', [
     res.json({ success, result, msg: "Your location has been saved" });
 });
 
-// Route 4: Update user education using: POST '/api/user/profile/updateeducation'
+// Route 7: Update user education using: POST '/api/user/profile/updateeducation'
 router.post('/updateeducation', [
     body('ssc.board', "Please provide your SSC board name correctly").trim().escape(),
     body('ssc.schoolName', 'Please provide your SSC school name correctly').trim().escape(),
@@ -275,7 +275,7 @@ router.post('/updateeducation', [
     res.json({ success, result, msg: "Your education detials has been saved" });
 });
 
-// Route 5: Update user skill using: POST '/api/user/profile/updateskill';
+// Route 8: Update user skill using: POST '/api/user/profile/updateskill';
 router.post('/updateskill', [
     body('skill', 'Please provide your skill').isArray({ min: 1 }).custom((val) => {
         for (let i = 0; i < val.length; i++) {
@@ -310,7 +310,7 @@ router.post('/updateskill', [
     res.json({ success, data: req.body, msg: 'Your skills has been saved' });
 })
 
-// Route 6: Update user project details using: POST '/api/user/profile/updateproject'
+// Route 9: Update user project details using: POST '/api/user/profile/updateproject'
 router.post('/updateproject', Authenticate, async (req, res) => {
     let success = false;
     let newProjectPhoto = null;
@@ -443,7 +443,7 @@ router.post('/updateproject', Authenticate, async (req, res) => {
     });
 });
 
-// Route 7: Delete user project using: POST '/api/user/profile/deleteproject'
+// Route 10: Delete user project using: POST '/api/user/profile/deleteproject'
 router.post('/deleteproject', Authenticate, async (req, res) => {
     let success = false;
     let oldProjectPhoto = null;
@@ -485,7 +485,7 @@ router.post('/deleteproject', Authenticate, async (req, res) => {
     }
 });
 
-// Route 8: Update user internship details using: POST '/api/user/profile/updateinternship'
+// Route 11: Update user internship details using: POST '/api/user/profile/updateinternship'
 router.post('/updateinternship', Authenticate, async (req, res) => {
     let success = false;
     let newInternshipCertificate = null;
@@ -604,7 +604,7 @@ router.post('/updateinternship', Authenticate, async (req, res) => {
     });
 });
 
-// Route 9: Delete user internship using: POST '/api/user/profile/deleteinternship'
+// Route 12: Delete user internship using: POST '/api/user/profile/deleteinternship'
 router.post('/deleteinternship', Authenticate, async (req, res) => {
     let success = false;
     let oldInternshipCertificate = null;
@@ -647,7 +647,7 @@ router.post('/deleteinternship', Authenticate, async (req, res) => {
     }
 });
 
-// Route 10: Update user achievement details using: POST '/api/user/profile/updateachievement'
+// Route 13: Update user achievement details using: POST '/api/user/profile/updateachievement'
 router.post('/updateachievement', Authenticate, async (req, res) => {
     let success = false;
     let newAchievementCertificate = null;
@@ -760,7 +760,7 @@ router.post('/updateachievement', Authenticate, async (req, res) => {
     });
 });
 
-// Route 11: Delete user achievement using: POST '/api/user/profile/deleteachievement'
+// Route 14: Delete user achievement using: POST '/api/user/profile/deleteachievement'
 router.post('/deleteachievement', Authenticate, async (req, res) => {
     let success = false;
     let oldAchievementCertificate = null;
@@ -799,6 +799,78 @@ router.post('/deleteachievement', Authenticate, async (req, res) => {
         res.json({ success, result, msg: 'Your achievement has been deleted' });
     } catch (error) {
         return res.status(500).json({ success, msg: 'Something went wrong while deleting the achievement. Please try again', err: error.message });
+    }
+});
+
+// Route 15: Get user location using: GET '/api/user/profile/getuserlocation'
+router.get('/getuserlocation', Authenticate, async (req, res) => {
+    let success = false;
+
+    console.log('req.user: ', req.user);
+    try {
+        let user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) }).select('location')
+
+        success = true
+        res.json({ success, user });
+    } catch (error) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
+// Route 16: Get user education using: GET '/api/user/profile/getusereducation'
+router.get('/getusereducation', Authenticate, async (req, res) => {
+    let success = false;
+
+    try {
+        let user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) }).select('education')
+
+        success = true
+        res.json({ success, user });
+    } catch (error) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
+// Route 16: Get user skill using: GET '/api/user/profile/getuserskill'
+router.get('/getuserskill', Authenticate, async (req, res) => {
+    let success = false;
+
+    try {
+        let user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) }).select('skill')
+
+        success = true
+        res.json({ success, user });
+    } catch (error) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
+// Route 17: Get user project using: GET '/api/user/profile/:username/getproject'
+router.get('/:username/getproject', async (req, res) => {
+    let success = false;
+    let user = null;
+
+    if (!req.params.username) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please logout and try again.' });
+    }
+
+    try {
+        user = await userModel.findOne({ username: req.params.username }).select('_id');
+
+        if (!user) {
+            return res.status(401).json({ success, msg: 'No user found' });
+        }
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+
+    try {
+        let result = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(user._id) }).select('-_id project');
+
+        success = true
+        res.json({ result, result });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
     }
 });
 
