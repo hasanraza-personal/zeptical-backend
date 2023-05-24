@@ -9,6 +9,7 @@ const Authenticate = require('../../middleware/Authenticate');
 const formidable = require('formidable');
 const sharp = require('sharp');
 const userProfileModel = require('../../models/user/UserProfile');
+const UserProfile = require('../../models/user/UserProfile');
 
 let APP_URL = ''
 if (process.env.APP_ENV === 'production') {
@@ -342,6 +343,14 @@ router.post('/updateproject', Authenticate, async (req, res) => {
             return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
         }
 
+        if (user) {
+            for (let key in user.project) {
+                if (user.project[key].id == fields.projectId) {
+                    oldProjectPhoto = user.project[key].photo
+                }
+            }
+        }
+
         // Upload project photo and save
         if (files.photo) {
             // Verify photo size and type
@@ -360,11 +369,6 @@ router.post('/updateproject', Authenticate, async (req, res) => {
                 newProjectPhoto = `${APP_URL}/images/project_photo/${returnVal.newPhoto}`;
             } else {
                 // User is updating project photo
-                for (let key in user.project) {
-                    if (user.project[key].id == fields.projectId) {
-                        oldProjectPhoto = user.project[key].photo
-                    }
-                }
 
                 // Delete photo from folder
                 deletePreviousPhoto(oldProjectPhoto, projectPhotoUploadPath);
@@ -866,6 +870,31 @@ router.get('/:username/getproject', async (req, res) => {
 
     try {
         let result = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(user._id) }).select('-_id project');
+
+        success = true
+        res.json({ success, result });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
+// Route 17: Get user project using: GET '/api/user/profile/getproject/:projectId'
+router.get('/getproject/:projectId', Authenticate, async (req, res) => {
+    let success = false;
+    let result = null;
+
+    if (!req.params.projectId) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please logout and try again.' });
+    }
+
+    try {
+        result = await UserProfile.findOne({ userId: new mongoose.Types.ObjectId(req.user) }).select('project');
+
+        if (!result) {
+            return res.status(401).json({ success, msg: 'Something went wrong. Please logout and try again' });
+        }
+
+        result = result.project.filter(element => element.id == req.params.projectId);
 
         success = true
         res.json({ result, result });
