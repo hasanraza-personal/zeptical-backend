@@ -57,9 +57,11 @@ const UserProfileSchema = new mongoose.Schema({
             },
             projectLink: {
                 type: String,
+                set: (value) => value.toLowerCase()
             },
             githubLink: {
                 type: String,
+                set: (value) => value.toLowerCase()
             },
             photo: {
                 type: String,

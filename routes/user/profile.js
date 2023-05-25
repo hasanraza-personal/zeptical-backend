@@ -526,6 +526,14 @@ router.post('/updateinternship', Authenticate, async (req, res) => {
             return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
         }
 
+        if (user) {
+            for (let key in user.internship) {
+                if (user.internship[key].id == fields.internshipId) {
+                    oldInternshipCertificate = user.internship[key].certificate
+                }
+            }
+        }
+
         // Upload certificate in folder
         if (files.certificate) {
             // Verify certificate size and type
@@ -544,11 +552,6 @@ router.post('/updateinternship', Authenticate, async (req, res) => {
                 newInternshipCertificate = `${APP_URL}/images/internship_certificate/${returnVal.newPhoto}`;
             } else {
                 // User is updating certificate
-                for (let key in user.internship) {
-                    if (user.internship[key].id == fields.internshipId) {
-                        oldInternshipCertificate = user.internship[key].certificate
-                    }
-                }
 
                 // Delete certificate from folder
                 deletePreviousPhoto(oldInternshipCertificate, internshipCertificateUploadPath);
@@ -589,7 +592,7 @@ router.post('/updateinternship', Authenticate, async (req, res) => {
             if (files.certificate) {
                 internshipcertificate = newInternshipCertificate;
             } else {
-                internshipcertificate = newInternshipCertificate;
+                internshipcertificate = oldInternshipCertificate;
             }
 
             result = await userProfileModel.findOneAndUpdate({ 'internship._id': new mongoose.Types.ObjectId(fields.internshipId) }, {
@@ -684,6 +687,14 @@ router.post('/updateachievement', Authenticate, async (req, res) => {
             return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
         }
 
+        if (user) {
+            for (let key in user.achievement) {
+                if (user.achievement[key].id == fields.achievementId) {
+                    oldAchievementCertificate = user.achievement[key].certificate
+                }
+            }
+        }
+
         // Upload certificate in folder
         if (files.certificate) {
             // Verify certificate size and type
@@ -702,11 +713,6 @@ router.post('/updateachievement', Authenticate, async (req, res) => {
                 newAchievementCertificate = `${APP_URL}/images/achievement_certificate/${returnVal.newPhoto}`;
             } else {
                 // User is updating certificate
-                for (let key in user.achievement) {
-                    if (user.achievement[key].id == fields.achievementId) {
-                        oldAchievementCertificate = user.achievement[key].certificate
-                    }
-                }
 
                 // Delete certificate from folder
                 deletePreviousPhoto(oldAchievementCertificate, achievementCertificateUploadPath);
@@ -746,7 +752,7 @@ router.post('/updateachievement', Authenticate, async (req, res) => {
             if (files.certificate) {
                 achievementCertificate = newAchievementCertificate;
             } else {
-                achievementCertificate = newAchievementCertificate;
+                achievementCertificate = oldAchievementCertificate;
             }
 
             result = await userProfileModel.findOneAndUpdate({ 'achievement._id': new mongoose.Types.ObjectId(fields.achievementId) }, {
@@ -878,7 +884,7 @@ router.get('/:username/getproject', async (req, res) => {
     }
 });
 
-// Route 17: Get user project using: GET '/api/user/profile/getproject/:projectId'
+// Route 18: Get user project using: GET '/api/user/profile/getproject/:projectId'
 router.get('/getproject/:projectId', Authenticate, async (req, res) => {
     let success = false;
     let result = null;
@@ -895,6 +901,114 @@ router.get('/getproject/:projectId', Authenticate, async (req, res) => {
         }
 
         result = result.project.filter(element => element.id == req.params.projectId);
+
+        success = true
+        res.json({ result, result });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
+// Route 19: Get user achievement using: GET '/api/user/profile/:username/getachievement'
+router.get('/:username/getachievement', async (req, res) => {
+    let success = false;
+    let user = null;
+
+    if (!req.params.username) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please logout and try again.' });
+    }
+
+    try {
+        user = await userModel.findOne({ username: req.params.username }).select('_id');
+
+        if (!user) {
+            return res.status(401).json({ success, msg: 'No user found' });
+        }
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+
+    try {
+        let result = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(user._id) }).select('-_id achievement');
+
+        success = true
+        res.json({ success, result });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
+// Route 20: Get user achievement using: GET '/api/user/profile/getachievement/:achievementId'
+router.get('/getachievement/:achievementId', Authenticate, async (req, res) => {
+    let success = false;
+    let result = null;
+
+    if (!req.params.achievementId) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please logout and try again.' });
+    }
+
+    try {
+        result = await UserProfile.findOne({ userId: new mongoose.Types.ObjectId(req.user) }).select('achievement');
+
+        if (!result) {
+            return res.status(401).json({ success, msg: 'Something went wrong. Please logout and try again' });
+        }
+
+        result = result.achievement.filter(element => element.id == req.params.achievementId);
+
+        success = true
+        res.json({ result, result });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
+// Route 21: Get user internship using: GET '/api/user/profile/:username/getinternship'
+router.get('/:username/getinternship', async (req, res) => {
+    let success = false;
+    let user = null;
+
+    if (!req.params.username) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please logout and try again.' });
+    }
+
+    try {
+        user = await userModel.findOne({ username: req.params.username }).select('_id');
+
+        if (!user) {
+            return res.status(401).json({ success, msg: 'No user found' });
+        }
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+
+    try {
+        let result = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(user._id) }).select('-_id internship');
+
+        success = true
+        res.json({ success, result });
+    } catch (error) {
+        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
+    }
+});
+
+// Route 22: Get user internship using: GET '/api/user/profile/getinternship/:internshipId'
+router.get('/getinternship/:internshipId', Authenticate, async (req, res) => {
+    let success = false;
+    let result = null;
+
+    if (!req.params.internshipId) {
+        return res.status(400).json({ success, msg: 'Something went wrong. Please logout and try again.' });
+    }
+
+    try {
+        result = await UserProfile.findOne({ userId: new mongoose.Types.ObjectId(req.user) }).select('internship');
+
+        if (!result) {
+            return res.status(401).json({ success, msg: 'Something went wrong. Please logout and try again' });
+        }
+
+        result = result.internship.filter(element => element.id == req.params.internshipId);
 
         success = true
         res.json({ result, result });
