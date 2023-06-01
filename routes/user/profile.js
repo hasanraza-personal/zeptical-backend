@@ -214,19 +214,28 @@ router.post('/updatelocation', [
 
 // Route 7: Update user education using: POST '/api/user/profile/updateeducation'
 router.post('/updateeducation', [
-    body('ssc.board', "Please provide your SSC board name correctly").trim().escape(),
-    body('ssc.schoolName', 'Please provide your SSC school name correctly').trim().escape(),
-    body('hsc.board', "Please provide your HSC board name correctly").trim().escape(),
-    body('hsc.collegeName', 'Please provide your HSC college name correctly').trim().escape(),
-    body('diploma.stream', "Please provide your Diploma stream correctly").trim().escape(),
-    body('diploma.collegeName', 'Please provide your Diploma college name correctly').trim().escape(),
-    body('degree.stream', "Please provide your Degree stream correctly").trim().escape(),
-    body('degree.collegeName', 'Please provide your Degree college name correctly').trim().escape(),
+    body('sscBoard', "Please provide your SSC board name correctly").trim().escape(),
+    body('sscSchoolName', 'Please provide your SSC school name correctly').trim().escape(),
+    body('hscBoard', "Please provide your HSC board name correctly").trim().escape(),
+    body('hscCollegeName', 'Please provide your HSC college name correctly').trim().escape(),
+    body('diplomaStream', "Please provide your Diploma stream correctly").trim().escape(),
+    body('diplomaCollegeName', 'Please provide your Diploma college name correctly').trim().escape(),
+    body('degreeStream', "Please provide your Degree stream correctly").trim().escape(),
+    body('degreeCollegeName', 'Please provide your Degree college name correctly').trim().escape(),
 ], Authenticate, async (req, res) => {
     let success = false;
     let result = null;
 
-    const { ssc, hsc, diploma, degree } = req.body;
+    const {
+        sscBoard,
+        sscSchoolName,
+        hscBoard,
+        hscCollegeName,
+        diplomaStream,
+        diplomaCollegeName,
+        degreeStream,
+        degreeCollegeName
+    } = req.body;
 
     // If there are errors, return bad request and the errors
     let errors = validationResult(req);
@@ -235,22 +244,22 @@ router.post('/updateeducation', [
     }
 
     // SSC 
-    if ((ssc.board.length == 0 && ssc.schoolName.length != 0) || (ssc.board.length != 0 && ssc.schoolName.length == 0)) {
+    if ((sscBoard.length == 0 && sscSchoolName.length != 0) || (sscBoard.length != 0 && sscSchoolName.length == 0)) {
         return res.status(400).json({ success, msg: "Please provide your SSC school name and board name" });
     }
 
     // HSC 
-    if ((hsc.board.length == 0 && hsc.collegeName.length != 0) || (hsc.board.length != 0 && hsc.collegeName.length == 0)) {
+    if ((hscBoard.length == 0 && hscCollegeName.length != 0) || (hscBoard.length != 0 && hscCollegeName.length == 0)) {
         return res.status(400).json({ success, msg: "Please provide your HSC college name and board name" });
     }
 
     // Diploma 
-    if ((diploma.stream.length == 0 && diploma.collegeName.length != 0) || (diploma.stream.length != 0 && diploma.collegeName.length == 0)) {
+    if ((diplomaStream.length == 0 && diplomaCollegeName.length != 0) || (diplomaStream.length != 0 && diplomaCollegeName.length == 0)) {
         return res.status(400).json({ success, msg: "Please provide your Diploma college name and stream name" });
     }
 
     // Degree 
-    if ((degree.stream.length == 0 && degree.collegeName.length != 0) || (degree.stream.length != 0 && degree.collegeName.length == 0)) {
+    if ((degreeStream.length == 0 && degreeCollegeName.length != 0) || (degreeStream.length != 0 && degreeCollegeName.length == 0)) {
         return res.status(400).json({ success, msg: "Please provide your Degree college name and stream name" });
     }
 
@@ -261,10 +270,14 @@ router.post('/updateeducation', [
                 $set:
                 {
                     education: {
-                        ssc,
-                        hsc,
-                        diploma,
-                        degree
+                        sscBoard,
+                        sscSchoolName,
+                        hscBoard,
+                        hscCollegeName,
+                        diplomaStream,
+                        diplomaCollegeName,
+                        degreeStream,
+                        degreeCollegeName,
                     }
                 }
             }, { new: true }).select('education');
@@ -628,7 +641,6 @@ router.post('/deleteinternship', Authenticate, async (req, res) => {
             if (user.internship[key].id == req.body.internshipId) {
                 oldInternshipCertificate = user.internship[key].certificate
             }
-            console.log('oldInternshipCertificate: ', oldInternshipCertificate);
         }
 
         // Delete photo from folder
@@ -816,7 +828,6 @@ router.post('/deleteachievement', Authenticate, async (req, res) => {
 router.get('/getuserlocation', Authenticate, async (req, res) => {
     let success = false;
 
-    console.log('req.user: ', req.user);
     try {
         let user = await userProfileModel.findOne({ userId: new mongoose.Types.ObjectId(req.user) }).select('location')
 

@@ -13,38 +13,30 @@ const UserProfileSchema = new mongoose.Schema({
         },
     },
     education: {
-        ssc: {
-            board: {
-                type: String,
-            },
-            schoolName: {
-                type: String,
-            },
+        sscBoard: {
+            type: String,
         },
-        hsc: {
-            board: {
-                type: String,
-            },
-            collegeName: {
-                type: String,
-            },
+        sscSchoolName: {
+            type: String,
         },
-        diploma: {
-            stream: {
-                type: String,
-            },
-            collegeName: {
-                type: String,
-            },
+        hscBoard: {
+            type: String,
         },
-        degree: {
-            stream: {
-                type: String,
-            },
-            collegeName: {
-                type: String,
-            },
-        }
+        hscCollegeName: {
+            type: String,
+        },
+        diplomaStream: {
+            type: String,
+        },
+        diplomaCollegeName: {
+            type: String,
+        },
+        degreeStream: {
+            type: String,
+        },
+        degreeCollegeName: {
+            type: String,
+        },
     },
     skill: [],
     project: [
