@@ -214,27 +214,28 @@ router.post('/updatelocation', [
 
 // Route 7: Update user education using: POST '/api/user/profile/updateeducation'
 router.post('/updateeducation', [
-    body('sscBoard', "Please provide your SSC board name correctly").trim().escape(),
-    body('sscSchoolName', 'Please provide your SSC school name correctly').trim().escape(),
-    body('hscBoard', "Please provide your HSC board name correctly").trim().escape(),
-    body('hscCollegeName', 'Please provide your HSC college name correctly').trim().escape(),
-    body('diplomaStream', "Please provide your Diploma stream correctly").trim().escape(),
-    body('diplomaCollegeName', 'Please provide your Diploma college name correctly').trim().escape(),
-    body('degreeStream', "Please provide your Degree stream correctly").trim().escape(),
-    body('degreeCollegeName', 'Please provide your Degree college name correctly').trim().escape(),
+    body('qualification', "Please provide your current qualification").trim().escape().not().isEmpty(),
+    body('ssc.schoolName', 'Please provide your SSC school name correctly').trim().escape(),
+    body('ssc.marks', 'Please provide your SSC marks correctly').trim().escape(),
+    body('hsc.stream', 'Please provide your HSC stream correctly').trim().escape(),
+    body('hsc.collegeName', 'Please provide your HSC college name correctly').trim().escape(),
+    body('hsc.marks', "Please provide your HSC marks correctly").trim().escape(),
+    body('diploma.stream', "Please provide your Diploma stream correctly").trim().escape(),
+    body('diploma.collegeName', 'Please provide your Diploma college name correctly').trim().escape(),
+    body('diploma.marks', "Please provide your Diploma marks correctly").trim().escape(),
+    body('degree.stream', 'Please provide your Degree stream correctly').trim().escape(),
+    body('degree.collegeName', 'Please provide your Degree college name correctly').trim().escape(),
+    body('degree.marks', 'Please provide your Degree marks correctly').trim().escape(),
 ], Authenticate, async (req, res) => {
     let success = false;
     let result = null;
 
     const {
-        sscBoard,
-        sscSchoolName,
-        hscBoard,
-        hscCollegeName,
-        diplomaStream,
-        diplomaCollegeName,
-        degreeStream,
-        degreeCollegeName
+        qualification,
+        ssc,
+        hsc,
+        diploma,
+        degree,
     } = req.body;
 
     // If there are errors, return bad request and the errors
@@ -243,24 +244,38 @@ router.post('/updateeducation', [
         return res.status(400).json({ success, msg: errors.errors[0].msg });
     }
 
-    // SSC 
-    if ((sscBoard.length == 0 && sscSchoolName.length != 0) || (sscBoard.length != 0 && sscSchoolName.length == 0)) {
-        return res.status(400).json({ success, msg: "Please provide your SSC school name and board name" });
+    if (qualification.trim().length === 0) {
+        return res.status(401).json({ success, msg: 'Qualification cannot be blank' });
     }
 
-    // HSC 
-    if ((hscBoard.length == 0 && hscCollegeName.length != 0) || (hscBoard.length != 0 && hscCollegeName.length == 0)) {
-        return res.status(400).json({ success, msg: "Please provide your HSC college name and board name" });
+    if (ssc.marks.trim().length !== 0 && ssc.schoolName.trim().length === 0) {
+        return res.status(401).json({ success, msg: 'Please provide your SSC school name' });
     }
 
-    // Diploma 
-    if ((diplomaStream.length == 0 && diplomaCollegeName.length != 0) || (diplomaStream.length != 0 && diplomaCollegeName.length == 0)) {
-        return res.status(400).json({ success, msg: "Please provide your Diploma college name and stream name" });
-    }
+    let arrObj = [
+        {
+            course: hsc,
+            errMsg: "Please provide your HSC stream and college name"
+        },
+        {
+            course: diploma,
+            errMsg: "Please provide your Diploma stream and college name"
+        },
+        {
+            course: degree,
+            errMsg: "Please provide your Degree stream and college name"
+        }
+    ]
 
-    // Degree 
-    if ((degreeStream.length == 0 && degreeCollegeName.length != 0) || (degreeStream.length != 0 && degreeCollegeName.length == 0)) {
-        return res.status(400).json({ success, msg: "Please provide your Degree college name and stream name" });
+    for (let key in arrObj) {
+        if (arrObj[key].course.stream.trim().length !== 0 && arrObj[key].course.collegeName.trim().length === 0 ||
+            arrObj[key].course.stream.trim().length === 0 && arrObj[key].course.collegeName.trim().length !== 0) {
+            return res.status(401).json({ success, msg: arrObj[key].errMsg });
+        }
+
+        if (arrObj[key].course.marks.trim().length !== 0 && (arrObj[key].course.stream.trim().length === 0 || arrObj[key].course.collegeName.trim().length === 0)) {
+            return res.status(401).json({ success, msg: arrObj[key].errMsg });
+        }
     }
 
     // Update user location
@@ -270,14 +285,11 @@ router.post('/updateeducation', [
                 $set:
                 {
                     education: {
-                        sscBoard,
-                        sscSchoolName,
-                        hscBoard,
-                        hscCollegeName,
-                        diplomaStream,
-                        diplomaCollegeName,
-                        degreeStream,
-                        degreeCollegeName,
+                        qualification,
+                        ssc,
+                        hsc,
+                        diploma,
+                        degree,
                     }
                 }
             }, { new: true }).select('education');
@@ -285,8 +297,8 @@ router.post('/updateeducation', [
         return res.status(500).json({ success, msg: 'Something went wrong while updating the education details. Please try again', err: error.message });
     }
 
-    success = true
-    res.json({ success, result, msg: "Your education detials has been saved" });
+    // success = true
+    res.json({ success, result: req.body, msg: "Your education detials has been saved" });
 });
 
 // Route 8: Update user skill using: POST '/api/user/profile/updateskill';
@@ -516,12 +528,17 @@ router.post('/updateinternship', Authenticate, async (req, res) => {
         if (fields.companyName.trim().length == 0) {
             return res.status(401).json({ success, msg: 'Please provide the company name in which you did internship' });
         }
+
         if (fields.duration.trim().length == 0) {
             return res.status(401).json({ success, msg: 'Please provide your internship duration' });
         }
 
-        if (fields.stipends.trim().length == 0) {
-            return res.status(401).json({ success, msg: 'Does this intenship provides stipends?' });
+        if (fields.type.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Please select your internship type' });
+        }
+
+        if (fields.type == "paid" && fields.stipends.trim().length == 0) {
+            return res.status(401).json({ success, msg: 'Please provide the amount of stipend you received during your internship' });
         }
 
         if (fields.description.trim().length == 0) {
@@ -589,6 +606,7 @@ router.post('/updateinternship', Authenticate, async (req, res) => {
                                 {
                                     companyName: fields.companyName,
                                     duration: fields.duration,
+                                    type: fields.type,
                                     stipends: fields.stipends,
                                     description: fields.description,
                                     certificate: newInternshipCertificate
@@ -612,6 +630,7 @@ router.post('/updateinternship', Authenticate, async (req, res) => {
                 $set: {
                     'internship.$.companyName': fields.companyName,
                     'internship.$.duration': fields.duration,
+                    'internship.$.type': fields.type,
                     'internship.$.stipends': fields.stipends,
                     'internship.$.description': fields.description,
                     'internship.$.certificate': internshipcertificate

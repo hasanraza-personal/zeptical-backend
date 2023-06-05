@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const skillModel = require('../../models/Skill');
-const boardModel = require('../../models/Board');
 const schoolModel = require('../../models/School');
 const collegeModel = require('../../models/College');
 const streamModel = require('../../models/Stream');
@@ -18,7 +17,7 @@ const openAI = new OpenAIApi(new Configuration({
 
 // Route 1: Add skill using: POST '/api/extras/addskill';
 router.post('/addskill', Authenticate, [
-    body('skill', "Skill cannot be blank").trim().not().isEmpty().escape().isLength({ min: 3 }).isLength({ max: 20 })
+    body('skill', "Skill cannot be blank").trim().not().isEmpty().isLength({ min: 1 }).isLength({ max: 20 })
 ], async (req, res) => {
     let success = false
 
@@ -30,7 +29,14 @@ router.post('/addskill', Authenticate, [
 
     // Check whether the skill exists
     try {
-        let skillName = new RegExp(req.body.skill.trim().toLowerCase(), 'i');
+        const hasSpecialCharacters = /[^\w\s]/.test(req.body.skill);
+        let skillName = "";
+        if (!hasSpecialCharacters) {
+            skillName = new RegExp(req.body.skill.trim().toLowerCase(), 'i');
+        } else {
+            skillName = req.body.skill.trim();
+        }
+
         let result = await skillModel.exists({ value: skillName }).select('skill');
 
         if (result) {
@@ -68,65 +74,12 @@ router.get('/getskill', Authenticate, async (req, res) => {
     }
 });
 
-// Route 3: Add skill using: POST '/api/extras/addboard';
-router.post('/addboard', Authenticate, [
-    body('board', "Board cannot be blank").trim().not().isEmpty().escape().isLength({ min: 3 }).isLength({ max: 100 })
-], async (req, res) => {
-    let success = false
-
-    // If there are errors, return bad request and the errors
-    let errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ success, msg: errors.errors[0].msg });
-    }
-
-    // Check whether the board exists
-    try {
-        let boardName = new RegExp(req.body.board.trim().toLowerCase(), 'i');
-        let result = await boardModel.exists({ value: boardName });
-
-        if (result) {
-            return res.status(200).json({ success, msg: 'Board already exists' });
-        }
-    } catch (error) {
-        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
-    }
-
-    // Save board to database
-    try {
-        await boardModel.create({
-            value: req.body.board,
-        });
-    } catch (error) {
-        return res.status(500).json({ success, msg: 'Something went wrong. Please try again', err: error.message });
-    }
-
-    success = true
-    res.json({ success, msg: "Board successfully saved" });
-});
-
-// Route 4: Get board using: GET '/api/extras/getboard';
-router.get('/getboard', Authenticate, async (req, res) => {
-    let success = false
-
-    // Check whether the skill exists
-    try {
-        let result = await boardModel.find().select('value').sort({ 'value': 1 });
-
-        success = true
-        res.json({ success, result });
-    } catch (error) {
-        return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
-    }
-});
-
 // Route 5: Add school using: POST '/api/extras/addschool';
 router.post('/addschool', Authenticate, [
     body('school', "School cannot be blank").trim().not().isEmpty().escape().isLength({ min: 3 }).isLength({ max: 100 })
 ], async (req, res) => {
     let success = false
     // If there are errors, return bad request and the errors
-    console.log(req.body);
     let errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ success, msg: errors.errors[0].msg });
@@ -382,7 +335,7 @@ router.get('/getstate', Authenticate, async (req, res) => {
 
 // Route 13: Get information about the particular topic using: POST '/api/extras/getinformation';
 router.post('/getinformation', Authenticate, [
-    body('topicName', "Please provide the topic name").trim().not().isEmpty().escape().isLength({ min: 2 }).isLength({ max: 50 })
+    body('topicName', "Please provide the topic name").trim().not().isEmpty().escape().isLength({ min: 1 }).isLength({ max: 50 })
 ], async (req, res) => {
     let success = false;
     let completion = null;
@@ -393,14 +346,16 @@ router.post('/getinformation', Authenticate, [
         return res.status(400).json({ success, msg: errors.errors[0].msg });
     }
 
-    // Check whether the state exists
+    let topicName = req.body.topicName;
+    topicName = topicName.toLowerCase().trim();
+
+    // Check whether the topin name exists
     try {
-        let topicName = new RegExp(req.body.topicName.trim().toLowerCase(), 'i');
         let result = await topicInformationModel.findOne({ topicName }).select('-_id topicName topicDesc');
 
         if (result) {
             success = true;
-            return res.status(200).json({ success, result, msg: 'Information is available' });
+            return res.status(200).json({ success, source: "internal", result, msg: 'Information is available' });
         }
     } catch (error) {
         return res.status(500).json({ success, msg: 'Something went wrong. Please try again.', err: error.message });
@@ -428,16 +383,55 @@ router.post('/getinformation', Authenticate, [
     // Save topic information to database
     try {
         await topicInformationModel.create({
-            topicName: req.body.topicName,
+            topicName,
             topicDesc: completion.data.choices[0].message.content,
         });
+
+        let result = {
+            topicName: req.body.topicName,
+            topicDesc: completion.data.choices[0].message.content
+        }
+
+        success = true
+        return res.status(200).json({ success, source: "external", result, msg: 'Information fetched' });
     } catch (error) {
         return res.status(500).json({ success, msg: 'Something went wrong. Please try again', err: error.message });
+    }
+});
+
+// Route 13: Rephrase sentence using: POST '/api/extras/rephrasesentence';
+router.post('/rephrasesentence', Authenticate, [
+    body('sentence', "Please provide your sentence between 200 and 1000 characters").trim().not().isEmpty().escape().isLength({ min: 3 }).isLength({ max: 1000 })
+], async (req, res) => {
+    let success = false;
+    let completion = null;
+
+    // If there are errors, return bad request and the errors
+    let errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ success, msg: errors.errors[0].msg });
+    }
+
+    try {
+        completion = await openAI.createChatCompletion({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: `${req.body.sentence}. Rephrase this sentence!` }]
+        });
+        success = true;
+    } catch (error) {
+        if (error.response) {
+            // console.log("status error", error.response.status);
+            // console.log("data error", error.response.data);
+            success = false;
+            return res.status(500).json({ success, msg: 'Some error has been occured, while getting information. Please try another topic' });
+        } else {
+            // console.log("message error", error.message);
+            return res.status(500).json({ success, msg: 'Some error has been occured, while getting information. Please refresh the page and try again' });
+        }
     }
 
     success = true
     return res.status(200).json({ success, result: completion.data.choices[0].message.content, msg: 'Information fetched' });
-    // res.json({ success, msg: "API is called" });
 });
 
 module.exports = router;

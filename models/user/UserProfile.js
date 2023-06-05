@@ -13,30 +13,50 @@ const UserProfileSchema = new mongoose.Schema({
         },
     },
     education: {
-        sscBoard: {
-            type: String,
+        qualification: {
+            type: String
         },
-        sscSchoolName: {
-            type: String,
+        ssc: {
+            schoolName: {
+                type: String
+            },
+            marks: {
+                type: String
+            }
         },
-        hscBoard: {
-            type: String,
+        hsc: {
+            stream: {
+                type: String
+            },
+            collegeName: {
+                type: String
+            },
+            marks: {
+                type: String
+            }
         },
-        hscCollegeName: {
-            type: String,
+        diploma: {
+            stream: {
+                type: String
+            },
+            collegeName: {
+                type: String
+            },
+            marks: {
+                type: String
+            }
         },
-        diplomaStream: {
-            type: String,
-        },
-        diplomaCollegeName: {
-            type: String,
-        },
-        degreeStream: {
-            type: String,
-        },
-        degreeCollegeName: {
-            type: String,
-        },
+        degree: {
+            stream: {
+                type: String
+            },
+            collegeName: {
+                type: String
+            },
+            marks: {
+                type: String
+            }
+        }
     },
     skill: [],
     project: [
@@ -60,15 +80,12 @@ const UserProfileSchema = new mongoose.Schema({
             },
         }
     ],
-    internship: [
+    achievement: [
         {
-            companyName: {
+            name: {
                 type: String,
             },
-            duration: {
-                type: String,
-            },
-            stipends: {
+            level: {
                 type: String,
             },
             description: {
@@ -79,12 +96,18 @@ const UserProfileSchema = new mongoose.Schema({
             },
         }
     ],
-    achievement: [
+    internship: [
         {
-            name: {
+            companyName: {
                 type: String,
             },
-            level: {
+            duration: {
+                type: String,
+            },
+            type: {
+                type: String,
+            },
+            stipends: {
                 type: String,
             },
             description: {
@@ -102,16 +125,6 @@ const UserProfileSchema = new mongoose.Schema({
         },
         paymentPreference: {
             type: String,
-        },
-        photoVerification: {
-            type: String,
-        },
-        idVerification: {
-            type: String,
-        },
-        isVerified: {
-            type: Boolean,
-            default: false
         },
     }
 }, {
