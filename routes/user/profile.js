@@ -9,7 +9,6 @@ const Authenticate = require('../../middleware/Authenticate');
 const formidable = require('formidable');
 const sharp = require('sharp');
 const userProfileModel = require('../../models/user/UserProfile');
-const UserProfile = require('../../models/user/UserProfile');
 
 let APP_URL = ''
 if (process.env.APP_ENV === 'production') {

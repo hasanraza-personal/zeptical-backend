@@ -126,6 +126,14 @@ const UserProfileSchema = new mongoose.Schema({
         paymentPreference: {
             type: String,
         },
+        pitchStatus: {
+            type: Boolean,
+            default: true
+        },
+        accountBlocked: {
+            type: Boolean,
+            default: false
+        }
     }
 }, {
     timestamps: true
